@@ -2,25 +2,60 @@ import json
 import urllib.request
 from datetime import datetime
 from email.utils import format_datetime
+from html.parser import HTMLParser
 
 API_URL = "https://eudoxus.gr/api/News/Get?skip=0&take=10&requireTotalCount=true&sort=[{\"selector\":\"PostDate\",\"desc\":true}]"
 OUTPUT_FILE = "feed.xml"
+
+class ContentParser(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.in_h3 = False
+        self.in_p = False
+        self.title = ""
+        self.description = ""
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "h3":
+            self.in_h3 = True
+        if tag == "p":
+            self.in_p = True
+
+    def handle_endtag(self, tag):
+        if tag == "h3":
+            self.in_h3 = False
+        if tag == "p":
+            self.in_p = False
+
+    def handle_data(self, data):
+        if self.in_h3:
+            self.title += data
+        if self.in_p:
+            self.description += data
 
 def fetch_data():
     with urllib.request.urlopen(API_URL) as response:
         return json.loads(response.read().decode("utf-8"))
 
+def extract_content(html):
+    parser = ContentParser()
+    parser.feed(html)
+    return parser.title.strip(), parser.description.strip()
+
 def build_rss(items):
     rss_items = []
 
     for item in items:
-        title = item.get("Title", "").strip()
-        description = item.get("Description", "").strip()
-        link = "https://eudoxus.gr" + item.get("Url", "")
+        html = item.get("PostContent", "")
+        title, description = extract_content(html)
+
         post_date = item.get("PostDate")
+        news_id = item.get("Id")
+
+        link = f"https://eudoxus.gr/news/{news_id}"
 
         try:
-            dt = datetime.fromisoformat(post_date.replace("Z", "+00:00"))
+            dt = datetime.fromisoformat(post_date)
             pub_date = format_datetime(dt)
         except Exception:
             pub_date = ""
