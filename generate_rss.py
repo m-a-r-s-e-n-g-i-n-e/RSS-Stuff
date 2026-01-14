@@ -14,22 +14,31 @@ class ContentParser(HTMLParser):
         self.in_p = False
         self.title = ""
         self.description = ""
+        self.link = None
 
     def handle_starttag(self, tag, attrs):
         if tag == "h3":
             self.in_h3 = True
+
         if tag == "p":
             self.in_p = True
+
+        if tag == "a" and self.link is None:
+            for attr, value in attrs:
+                if attr == "href":
+                    self.link = value
 
     def handle_endtag(self, tag):
         if tag == "h3":
             self.in_h3 = False
+
         if tag == "p":
             self.in_p = False
 
     def handle_data(self, data):
         if self.in_h3:
             self.title += data
+
         if self.in_p:
             self.description += data
 
@@ -40,7 +49,11 @@ def fetch_data():
 def extract_content(html):
     parser = ContentParser()
     parser.feed(html)
-    return parser.title.strip(), parser.description.strip()
+    return (
+        parser.title.strip(),
+        parser.description.strip(),
+        parser.link
+    )
 
 def build_rss(items):
     rss_items = []
@@ -50,9 +63,12 @@ def build_rss(items):
         title, description = extract_content(html)
 
         post_date = item.get("PostDate")
-        news_id = item.get("Id")
-
-        link = f"https://eudoxus.gr/Files/{news_id}"
+        title, description, raw_link = extract_content(html)
+        
+        if raw_link:
+            link = "https://eudoxus.gr" + raw_link
+        else:
+            link = "https://eudoxus.gr/news"
 
         try:
             dt = datetime.fromisoformat(post_date)
