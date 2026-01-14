@@ -57,19 +57,24 @@ def extract_content(html):
 
 def build_rss(items):
     rss_items = []
+    BASE_NEWS_URL = "https://eudoxus.gr/news"
 
     for item in items:
         html = item.get("PostContent", "")
-        title, description = extract_content(html)
+        post_id = item.get("Id")
 
-        post_date = item.get("PostDate")
         title, description, raw_link = extract_content(html)
-        
+
+        # --- LINK + GUID LOGIC ---
         if raw_link:
             link = "https://eudoxus.gr" + raw_link
+            guid = f"{BASE_NEWS_URL}#{post_id}"
         else:
-            link = "https://eudoxus.gr/news"
+            link = BASE_NEWS_URL
+            guid = BASE_NEWS_URL
+        # ------------------------
 
+        post_date = item.get("PostDate")
         try:
             dt = datetime.fromisoformat(post_date)
             pub_date = format_datetime(dt)
@@ -80,7 +85,7 @@ def build_rss(items):
         <item>
             <title><![CDATA[{title}]]></title>
             <link>{link}</link>
-            <guid>{link}</guid>
+            <guid isPermaLink="true">{guid}</guid>
             <pubDate>{pub_date}</pubDate>
             <description><![CDATA[{description}]]></description>
         </item>
