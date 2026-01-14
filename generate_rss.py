@@ -52,7 +52,7 @@ def build_rss(items):
         post_date = item.get("PostDate")
         news_id = item.get("Id")
 
-        link = f"https://eudoxus.gr/files/{news_id}"
+        link = f"https://eudoxus.gr/Files/{news_id}"
 
         try:
             dt = datetime.fromisoformat(post_date)
